@@ -236,11 +236,18 @@ static BaseType_t prvTCPPrepareConnect( FreeRTOS_Socket_t *pxSocket );
 static void prvCheckOptions( FreeRTOS_Socket_t *pxSocket, NetworkBufferDescriptor_t *pxNetworkBuffer );
 
 /*
- * The body of the loop in prvCheckOptions, factored out to aid code
+ * The body of the outer loop in prvCheckOptions, factored out to aid code
  * comprehension and enable separate property-checking for the loop body and the
  * rest of the function.
  */
 static FORCE_INLINE uint8_t prvCheckOptions_outerLoop( const unsigned char **pucPtr, const unsigned char **pucLast, UBaseType_t *uxNewMSS, FreeRTOS_Socket_t **pxSocket, TCPWindow_t **pxTCPWindow);
+
+/*
+ * The body of the inner loop in prvCheckOptions, factored out to aid code
+ * comprehension and enable separate property-checking for the loop body and the
+ * rest of the function.
+ */
+static FORCE_INLINE void prvCheckOptions_innerLoop( unsigned char **pucPtr, FreeRTOS_Socket_t **pxSocket, unsigned char *pucLen);
 
 /*
  * Set the initial properties in the options fields, like the preferred
@@ -1293,6 +1300,21 @@ static FORCE_INLINE uint8_t prvCheckOptions_outerLoop( const unsigned char **puc
 
 					while( len >= 8 )
 					{
+						prvCheckOptions_innerLoop(pucPtr, pxSocket, &len);
+					}
+					/* len should be 0 by now. */
+				}
+			}
+			#endif	/* ipconfigUSE_TCP_WIN == 1 */
+
+			( *pucPtr ) += len;
+		}
+	}
+
+/*-----------------------------------------------------------*/
+
+static FORCE_INLINE void prvCheckOptions_innerLoop( unsigned char **pucPtr, FreeRTOS_Socket_t **pxSocket, unsigned char *pucLen)
+{
 					uint32_t ulFirst = ulChar2u32( ( *pucPtr ) );
 					uint32_t ulLast  = ulChar2u32( ( *pucPtr ) + 4 );
 					uint32_t ulCount = ulTCPWindowTxSack( &( *pxSocket )->u.xTCP.xTCPWindow, ulFirst, ulLast );
